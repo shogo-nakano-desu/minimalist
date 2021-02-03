@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>Minimalist</title>
+</head>
+<body>
+    <h1>Minimalist Belongings</h1>
+    <h2>To be a Minimalist, you have to reduce your belongings!</h2>
+    
+    <div class="wrap">
+        <div class="input">
+            <form action="/new" method="post"> 
+                <table>
+                    <tr>
+                        <th>When?</th>
+                        <tb><input name="date" type="date"></tb>
+                    </tr>
+                    <tr>
+                        <th>What?</th>
+                        <td><input name="name" type="text"></td>
+                    </tr>
+                    <tr>
+                        <th>Price</th>
+                        <td><input name="price" type="number"></td>
+                    </tr>
+                    <tr>
+                        <th>Quantity</th>
+                        <td><input name="quantity" type="number"></td>
+                    </tr>
+                    <tr>
+                        <th>Sell or Buy</th>
+                        <td><input id="radio01" name="sellbuy" type="radio" value="sell" checked><label for="radio01">Sell</label>></td>
+                        <td><input id="radio02" name="sellbuy" type="radio" value="buy"><label for="radio02">Buy</label>></td>
+                    </tr>
+                    
+                    <tr>
+                        <td colspan="2">
+                            <input type="reset" value="reset">
+                            <input type="submit" value="submit">
+                        </td>
+                    </tr>
+                    
+                </table>
+            </form>
+        </div>
+        <div class="indexGet">
+            <p>テスト：{{.num}}</p>
+            <p>持ち物の増減：{{.sumQuantity}}</p>
+            <p>合計金額：{{.sumPrice}}</p>
+            <ul>
+                {{range.allbelongings}}
+                <li>
+                    Date:{{.Date}}, Name:{{.Name}}, Price:{{.Price}}, Quantity:{{.Quantity}}, Sell or Buy:{{.SellBuy}}
+                    <label><a href="/edit/{{.ID}}">Edit</a></label>
+                    <label><a href="/delete_confirm/{{.ID}}">Delete</a></label>
+                </li>
+                {{end}}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Delete page</title>
+  </head>
+  <body>
+    <h1>Delete confirmation</h1>
+    <p>Are you sure to delete?</p>
+    <ul>
+      <li>Date : {{.belongings.Date}}</li>
+      <li>Name : {{.belongings.Name}}</li>
+      <li>Price : {{.belongings.Price}}</li>
+      <li>Quantity : {{.belongings.Quantity}}</li>
+      <li>Sell or Buy : {{.belongings.SellBuy}}</li>
+    </ul>
+
+    <form action="/delete/{{.belongings.ID}}" method="post">
+      <p><input type="submit" value="Delete"></p>
+      <p><a href="/">Back</a></p>
+    </form>
+  </body>
+</html>
