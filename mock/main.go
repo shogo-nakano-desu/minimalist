@@ -150,7 +150,10 @@ func dbGetSumPrice() Presult {
 
 // ユーザー登録処理
 func createUser(username string, password string) []error {
-	passwordEncrypt, _ := crypto.PasswordEncrypt(password)
+	passwordEncrypt, err := crypto.PasswordEncrypt(password)
+	if err != nil{
+		log.Fatal(err)
+	}
 	db := gormConnect()
 	defer db.Close()
 	// Insert処理
@@ -175,27 +178,42 @@ func main() {
 
 	dbInit()
 
+	// index
+	router.GET("/", func(c *gin.Context) {
+		b_models := dbGetAll()
+		num := dbGetNum()
+		sumQuantity := dbGetSumQuantity()
+		sumPrice := dbGetSumPrice()
+		c.HTML(200, "belongings.html", gin.H{"b_models": b_models, "num": num, "sumQuantity": sumQuantity.Totalquantity, "sumPrice": sumPrice.Totalprice})
+	})
+
 	// ユーザー登録画面
 	router.GET("/signup", func(c *gin.Context) {
-
 		c.HTML(200, "signup.html", gin.H{})
 	})
 
-	// ユーザー登録
+	// User sign up process
 	router.POST("/signup", func(c *gin.Context) {
 		var form User
-		// バリデーション処理
+		// Validation
 		if err := c.Bind(&form); err != nil {
 			c.HTML(http.StatusBadRequest, "signup.html", gin.H{"err": err})
+			log.Println("fail to login because your info is invalid")
 			c.Abort()
 		} else {
 			username := c.PostForm("username")
 			password := c.PostForm("password")
-			// 登録ユーザーが重複していた場合にはじく処理
-			if err := createUser(username, password); err != nil {
+			err := createUser(username, password)
+			// Process to reject duplicate registered users
+			if err != nil {
+				if err == []error{
+				log.Println("success to signup!")
+				c.Redirect(302, "/")
+				}
+				log.Printf("%T\n", err)
 				c.HTML(http.StatusBadRequest, "signup.html", gin.H{"err": err})
-			}
-			c.Redirect(302, "/")
+				c.Abort()
+			} 
 		}
 	})
 
@@ -223,15 +241,6 @@ func main() {
 			log.Println("ログインできました")
 			c.Redirect(302, "/")
 		}
-	})
-
-	// index
-	router.GET("/", func(c *gin.Context) {
-		b_models := dbGetAll()
-		num := dbGetNum()
-		sumQuantity := dbGetSumQuantity()
-		sumPrice := dbGetSumPrice()
-		c.HTML(200, "belongings.html", gin.H{"b_models": b_models, "num": num, "sumQuantity": sumQuantity.Totalquantity, "sumPrice": sumPrice.Totalprice})
 	})
 
 	// Create
