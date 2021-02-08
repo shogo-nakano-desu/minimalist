@@ -157,9 +157,15 @@ func createUser(username string, password string) []error {
 	db := gormConnect()
 	defer db.Close()
 	// Insert処理
+	// Insert処理(普通にユーザー登録しようとするとここを通っている。)
 	if err := db.Create(&User{Username: username, Password: passwordEncrypt}).GetErrors(); err != nil {
+		log.Println("Insert error")
+		// 正常な値を登録した際にはerr = []になっているが、これもエラーとして帰ってきてしまっているのか？
+		log.Println(err)
 		return err
 	}
+	// 正常な登録をしている際にはこの下は動いていない
+	log.Println("nil?")
 	return nil
 }
 
