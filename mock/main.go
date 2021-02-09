@@ -25,22 +25,23 @@ type BModel struct {
 	Date     string // ex) 2020/01/01 It will CAST in SQL later
 }
 
-// Totalを計算するためのstruct
+// Total Price Struct
 type Presult struct {
 	Totalprice int
 }
-
+// Total Quantity struct
 type Qresult struct {
 	Totalquantity int
 }
 
-// User モデルの宣言
+// User Model
 type User struct {
 	gorm.Model
 	Username string `form:"username" binding:"required" gorm:"unique;not null"`
 	Password string `form:"password" binding:"required"`
 }
 
+// Connect to DB
 func gormConnect() *gorm.DB {
 	err := godotenv.Load()
 	if err != nil {
@@ -148,28 +149,27 @@ func dbGetSumPrice() Presult {
 	return presult
 }
 
-// ユーザー登録処理
+//User sign up procecc func
 func createUser(username string, password string) []error {
 	passwordEncrypt, err := crypto.PasswordEncrypt(password)
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 	db := gormConnect()
 	defer db.Close()
-	// Insert処理
-	// Insert処理(普通にユーザー登録しようとするとここを通っている。)
-	if err := db.Create(&User{Username: username, Password: passwordEncrypt}).GetErrors(); err != nil {
+	//Insert process
+	if cerr := db.Create(&User{Username: username, Password: passwordEncrypt}).GetErrors(); len(cerr) > 0 {
+		// FAIL
 		log.Println("Insert error")
-		// 正常な値を登録した際にはerr = []になっているが、これもエラーとして帰ってきてしまっているのか？
-		log.Println(err)
-		return err
+		log.Println(cerr)
+		return cerr
 	}
-	// 正常な登録をしている際にはこの下は動いていない
+	// SUCCESS
 	log.Println("nil?")
 	return nil
 }
 
-// ユーザーを一件取得
+// Get one user info
 func getUser(username string) User {
 	db := gormConnect()
 	var user User
@@ -193,7 +193,7 @@ func main() {
 		c.HTML(200, "belongings.html", gin.H{"b_models": b_models, "num": num, "sumQuantity": sumQuantity.Totalquantity, "sumPrice": sumPrice.Totalprice})
 	})
 
-	// ユーザー登録画面
+	// User sign up page
 	router.GET("/signup", func(c *gin.Context) {
 		c.HTML(200, "signup.html", gin.H{})
 	})
@@ -209,42 +209,41 @@ func main() {
 		} else {
 			username := c.PostForm("username")
 			password := c.PostForm("password")
-			err := createUser(username, password)
+
 			// Process to reject duplicate registered users
-			if err != nil {
-				if err == []error{
-				log.Println("success to signup!")
-				c.Redirect(302, "/")
-				}
+			if err := createUser(username, password); err != nil {
 				log.Printf("%T\n", err)
 				c.HTML(http.StatusBadRequest, "signup.html", gin.H{"err": err})
 				c.Abort()
-			} 
+			} else {
+				log.Println("success to signup!")
+				c.Redirect(302, "/login")
+			}
 		}
 	})
 
-	// ユーザーログイン画面
+	// User login page
 	router.GET("/login", func(c *gin.Context) {
 
 		c.HTML(200, "login.html", gin.H{})
 	})
 
-	// ユーザーログイン
+	// User login
 	router.POST("/login", func(c *gin.Context) {
 
-		// DBから取得したユーザーパスワード(Hash)
+		// UserPassword from DB(Hash)
 		dbPassword := getUser(c.PostForm("username")).Password
 		log.Println(dbPassword)
-		// フォームから取得したユーザーパスワード
+		// UserPassword from Form(non-Hash)
 		formPassword := c.PostForm("password")
 
-		// ユーザーパスワードの比較
+		// Compare User password(from DB & Form)
 		if err := crypto.CompareHashAndPassword(dbPassword, formPassword); err != nil {
-			log.Println("ログインできませんでした")
+			log.Println("Failed to login")
 			c.HTML(http.StatusBadRequest, "login.html", gin.H{"err": err})
 			c.Abort()
 		} else {
-			log.Println("ログインできました")
+			log.Println("Success to login")
 			c.Redirect(302, "/")
 		}
 	})
