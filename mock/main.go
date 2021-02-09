@@ -29,6 +29,7 @@ type BModel struct {
 type Presult struct {
 	Totalprice int
 }
+
 // Total Quantity struct
 type Qresult struct {
 	Totalquantity int
@@ -39,6 +40,7 @@ type User struct {
 	gorm.Model
 	Username string `form:"username" binding:"required" gorm:"unique;not null"`
 	Password string `form:"password" binding:"required"`
+	BModel   BModel // one user has one Belongings Model
 }
 
 // Connect to DB
@@ -130,23 +132,51 @@ func dbGetNum() int {
 	return num
 }
 
-// DB Get Sum of quantity
-func dbGetSumQuantity() Qresult {
+// DB Get Sum of quantity, Sell Item
+func dbGetSumQuantitySell() Qresult {
 	db := gormConnect()
 	defer db.Close()
-	var qresult Qresult
-	db.Table("b_models").Select("sum(quantity) as totalquantity").Scan(&qresult)
-	return qresult
-
+	var qresultSell Qresult
+	db.Table("b_models").Select("sum(-quantity) as totalquantity").Where("sell_buy = ?", "sell").Scan(&qresultSell) // sum of sell items
+	return qresultSell
 }
 
-// DB Get Sum of price
-func dbGetSumPrice() Presult {
+// DB Get Sum of quantity, Buy Item
+func dbGetSumQuantityBuy() Qresult {
 	db := gormConnect()
 	defer db.Close()
-	var presult Presult
-	db.Table("b_models").Select("sum(price) as totalprice").Scan(&presult)
-	return presult
+	var qresultBuy Qresult
+	db.Table("b_models").Select("sum(quantity) as totalquantity").Where("sell_buy = ?", "buy").Scan(&qresultBuy) // sum of buy items
+	log.Println(qresultBuy.Totalquantity)
+	return qresultBuy
+}
+
+// calculation quantity
+func calcQuantity() int {
+	return dbGetSumQuantitySell().Totalquantity + dbGetSumQuantityBuy().Totalquantity
+}
+
+// DB Get Sum of price, Sell Item
+func dbGetSumPriceSell() Presult {
+	db := gormConnect()
+	defer db.Close()
+	var presultsell Presult
+	db.Table("b_models").Select("sum(price) as totalprice").Scan(&presultsell)
+	return presultsell
+}
+
+// DB Get Sum of price, Buy Item
+func dbGetSumPriceBuy() Presult {
+	db := gormConnect()
+	defer db.Close()
+	var presultbuy Presult
+	db.Table("b_models").Select("sum(price) as totalprice").Scan(&presultbuy)
+	return presultbuy
+}
+
+// calculation price
+func calcPrice() int {
+	return dbGetSumPriceSell().Totalprice + dbGetSumPriceBuy().Totalprice
 }
 
 //User sign up procecc func
@@ -188,9 +218,9 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		b_models := dbGetAll()
 		num := dbGetNum()
-		sumQuantity := dbGetSumQuantity()
-		sumPrice := dbGetSumPrice()
-		c.HTML(200, "belongings.html", gin.H{"b_models": b_models, "num": num, "sumQuantity": sumQuantity.Totalquantity, "sumPrice": sumPrice.Totalprice})
+		sumQuantity := calcQuantity()
+		sumPrice := calcPrice()
+		c.HTML(200, "belongings.html", gin.H{"b_models": b_models, "num": num, "sumQuantity": sumQuantity, "sumPrice": sumPrice})
 	})
 
 	// User sign up page
@@ -315,7 +345,5 @@ func main() {
 		belongings := dbGetOne(id)
 		c.HTML(200, "delete.html", gin.H{"belongings": belongings})
 	})
-
 	router.Run()
-
 }
