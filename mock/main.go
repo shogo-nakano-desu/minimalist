@@ -2,28 +2,15 @@ package main
 
 import (
 	"go-web-app/mock/crypto"
+	"go-web-app/mock/database"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
-	"github.com/joho/godotenv"
 )
-
-// BModel = BelongigsModel
-type BModel struct {
-	gorm.Model
-	// Id       int `gorm:"primary_key`
-	Name     string
-	Price    int
-	Quantity int
-	SellBuy  string
-	Date     string // ex) 2020/01/01 It will CAST in SQL later
-}
 
 // Total Price Struct
 type Presult struct {
@@ -35,45 +22,11 @@ type Qresult struct {
 	Totalquantity int
 }
 
-// User Model
-type User struct {
-	gorm.Model
-	Username string `form:"username" binding:"required" gorm:"unique;not null"`
-	Password string `form:"password" binding:"required"`
-	BModel   BModel // one user has one Belongings Model
-}
-
-// Connect to DB
-func gormConnect() *gorm.DB {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(err)
-	}
-	DBMS := os.Getenv("belongings_DBMS")
-	USER := os.Getenv("belongings_USER")
-	PASS := os.Getenv("belongings_PASS")
-	DBNAME := os.Getenv("belongings_DBNAME")
-	CONNECT := USER + ":" + PASS + "@/" + DBNAME + "?parseTime=true"
-	db, err := gorm.Open(DBMS, CONNECT)
-	if err != nil {
-		panic(err.Error())
-	}
-	return db
-}
-
-// DB migration
-func dbInit() {
-	db := gormConnect()
-	defer db.Close()
-	db.AutoMigrate(&BModel{})
-	db.AutoMigrate(&User{})
-}
-
 // DB Create
 func dbCreate(name string, price int, quantity int, sellbuy string, date string) {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
-	db.Create(&BModel{
+	db.Create(&database.BModel{
 		Name:     name,
 		Price:    price,
 		Quantity: quantity,
@@ -84,9 +37,9 @@ func dbCreate(name string, price int, quantity int, sellbuy string, date string)
 
 // DB Update
 func dbUpdate(id int, name string, price int, quantity int, sellbuy string, date string) {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
-	var belongings BModel
+	var belongings database.BModel
 	db.First(&belongings, id)
 	belongings.Name = name
 	belongings.Price = price
@@ -98,34 +51,34 @@ func dbUpdate(id int, name string, price int, quantity int, sellbuy string, date
 
 // DB Delete
 func dbDelete(id int) {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
-	var belongings BModel
+	var belongings database.BModel
 	db.First(&belongings, id)
 	db.Unscoped().Delete(&belongings)
 }
 
 // DB Get All
-func dbGetAll() []BModel {
-	db := gormConnect()
+func dbGetAll() []database.BModel {
+	db := database.GormConnect()
 	defer db.Close()
-	var b_models []BModel
+	var b_models []database.BModel
 	db.Order("date desc").Find(&b_models)
 	return b_models
 }
 
 // DB Get One
-func dbGetOne(id int) BModel {
-	db := gormConnect()
+func dbGetOne(id int) database.BModel {
+	db := database.GormConnect()
 	defer db.Close()
-	var belongings BModel
+	var belongings database.BModel
 	db.First(&belongings, id)
 	return belongings
 }
 
 // DB Get number of belongings list
 func dbGetNum() int {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
 	var num int
 	db.Table("b_models").Count(&num)
@@ -134,16 +87,16 @@ func dbGetNum() int {
 
 // DB Get Sum of quantity, Sell Item
 func dbGetSumQuantitySell() Qresult {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
 	var qresultSell Qresult
-	db.Table("b_models").Select("sum(-quantity) as totalquantity").Where("sell_buy = ?", "sell").Scan(&qresultSell) // sum of sell items
+	db.Table("b_models").Select("sum(quantity) as totalquantity").Where("sell_buy = ?", "sell").Scan(&qresultSell) // sum of sell items
 	return qresultSell
 }
 
 // DB Get Sum of quantity, Buy Item
 func dbGetSumQuantityBuy() Qresult {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
 	var qresultBuy Qresult
 	db.Table("b_models").Select("sum(quantity) as totalquantity").Where("sell_buy = ?", "buy").Scan(&qresultBuy) // sum of buy items
@@ -153,66 +106,38 @@ func dbGetSumQuantityBuy() Qresult {
 
 // calculation quantity
 func calcQuantity() int {
-	return dbGetSumQuantitySell().Totalquantity + dbGetSumQuantityBuy().Totalquantity
+	return dbGetSumQuantityBuy().Totalquantity - dbGetSumQuantitySell().Totalquantity
 }
 
 // DB Get Sum of price, Sell Item
 func dbGetSumPriceSell() Presult {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
 	var presultsell Presult
-	db.Table("b_models").Select("sum(price) as totalprice").Scan(&presultsell)
+	db.Table("b_models").Select("sum(price) as totalprice").Where("sell_buy = ?", "sell").Scan(&presultsell)
 	return presultsell
 }
 
 // DB Get Sum of price, Buy Item
 func dbGetSumPriceBuy() Presult {
-	db := gormConnect()
+	db := database.GormConnect()
 	defer db.Close()
 	var presultbuy Presult
-	db.Table("b_models").Select("sum(price) as totalprice").Scan(&presultbuy)
+	db.Table("b_models").Select("sum(price) as totalprice").Where("sell_buy = ?", "buy").Scan(&presultbuy)
 	return presultbuy
 }
 
 // calculation price
 func calcPrice() int {
-	return dbGetSumPriceSell().Totalprice + dbGetSumPriceBuy().Totalprice
-}
-
-//User sign up procecc func
-func createUser(username string, password string) []error {
-	passwordEncrypt, err := crypto.PasswordEncrypt(password)
-	if err != nil {
-		log.Fatal(err)
-	}
-	db := gormConnect()
-	defer db.Close()
-	//Insert process
-	if cerr := db.Create(&User{Username: username, Password: passwordEncrypt}).GetErrors(); len(cerr) > 0 {
-		// FAIL
-		log.Println("Insert error")
-		log.Println(cerr)
-		return cerr
-	}
-	// SUCCESS
-	log.Println("nil?")
-	return nil
-}
-
-// Get one user info
-func getUser(username string) User {
-	db := gormConnect()
-	var user User
-	db.First(&user, "username = ?", username)
-	db.Close()
-	return user
+	ans := dbGetSumPriceSell().Totalprice*dbGetSumQuantitySell().Totalquantity - dbGetSumPriceBuy().Totalprice*dbGetSumQuantityBuy().Totalquantity
+	return ans
 }
 
 func main() {
 	router := gin.Default()
 	router.LoadHTMLGlob("front/*.html")
 
-	dbInit()
+	database.DbInit()
 
 	// index
 	router.GET("/", func(c *gin.Context) {
@@ -230,7 +155,7 @@ func main() {
 
 	// User sign up process
 	router.POST("/signup", func(c *gin.Context) {
-		var form User
+		var form database.User
 		// Validation
 		if err := c.Bind(&form); err != nil {
 			c.HTML(http.StatusBadRequest, "signup.html", gin.H{"err": err})
@@ -241,7 +166,7 @@ func main() {
 			password := c.PostForm("password")
 
 			// Process to reject duplicate registered users
-			if err := createUser(username, password); err != nil {
+			if err := database.CreateUser(username, password); err != nil {
 				log.Printf("%T\n", err)
 				c.HTML(http.StatusBadRequest, "signup.html", gin.H{"err": err})
 				c.Abort()
@@ -262,7 +187,7 @@ func main() {
 	router.POST("/login", func(c *gin.Context) {
 
 		// UserPassword from DB(Hash)
-		dbPassword := getUser(c.PostForm("username")).Password
+		dbPassword := database.GetUser(c.PostForm("username")).Password
 		log.Println(dbPassword)
 		// UserPassword from Form(non-Hash)
 		formPassword := c.PostForm("password")
@@ -291,6 +216,7 @@ func main() {
 		}
 		sellbuy := c.PostForm("sellbuy")
 		date := c.PostForm("date")
+
 		dbCreate(name, price, quantity, sellbuy, date)
 		c.Redirect(302, "/")
 	})
