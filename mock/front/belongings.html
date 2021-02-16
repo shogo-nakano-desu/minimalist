@@ -46,11 +46,11 @@
             </form>
         </div>
         <div class="indexGet">
-            <p>テスト：{{.num}}</p>
-            <p>持ち物の増減：{{.sumQuantity}}</p>
-            <p>合計金額：{{.sumPrice}}</p>
+            <p>test：{{.num}}</p>
+            <p>Sum of Belongings：{{.sumQuantity}}</p>
+            <p>Sum of Price：{{.sumPrice}}</p>
             <ul>
-                {{range.allbelongings}}
+                {{range.b_models}}
                 <li>
                     Date:{{.Date}}, Name:{{.Name}}, Price:{{.Price}}, Quantity:{{.Quantity}}, Sell or Buy:{{.SellBuy}}
                     <label><a href="/edit/{{.ID}}">Edit</a></label>
